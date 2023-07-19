@@ -11,21 +11,35 @@ typedef chrono::microseconds MSEC;
 typedef chrono::high_resolution_clock HRC;
 
 bool check_uniqueness_in_rows(int k, int n, vector<vector<int>>& matrix) {
-    for (int row = 0; row < n; row++) {
-        unordered_set<int> set;
-        //#pragma omp parallel for num_threads(k)
-        for (int col = 0; col < n; col++) {
-            // Check range of numbers
-            if (matrix[row][col] < 1 || matrix[row][col] > n)
-                return false;    
-        
-            set.insert(matrix[row][col]);
-        } 
-        cout << endl;
-        if (set.size() != (long unsigned int)n)
-            return false;
-    }
-    return true;
+    bool valid = true;
+
+    #pragma omp parallel for num_threads(9)
+        for (int row = 0; row < n; row++) {
+            bool valid_row = true;
+            unordered_set<int> set;
+            //#pragma omp parallel for num_threads(k)
+            for (int col = 0; col < n; col++) {
+                // Check range of numbers
+                if (matrix[row][col] < 1 || matrix[row][col] > n) 
+                    valid_row = false;
+                
+                set.insert(matrix[row][col]);
+            } 
+
+            if (set.size() != (long unsigned int)n) 
+                valid_row = false;
+
+            if (valid_row) 
+                printf("threadId = %d, row= %d is valid.\n", omp_get_thread_num(), row);
+                //cout << "Thread no: " << omp_get_thread_num() << " row: " << row << " is valid" << endl;
+            else {
+                printf("threadId = %d, row= %d is invalid.\n", omp_get_thread_num(), row);
+                valid = false;
+                //cout << "Thread no: " << omp_get_thread_num() << " row: " << row << " is invalid" << endl;
+            }
+        }
+
+    return valid;
 }
 
 int main() {
@@ -48,6 +62,8 @@ int main() {
 
     // Check Sudoku conditions
     bool is_valid = true;
+
+    //cout << "Num threads: " << omp_get_num_threads() << endl;
 
     // Check: Each row contains unique values from 1 - N.
     is_valid = check_uniqueness_in_rows(k, n, matrix);
